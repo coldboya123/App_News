@@ -1,4 +1,4 @@
-package com.example.test_loadmore;
+package com.example.App_News;
 
 import android.content.Context;
 import android.content.Intent;
@@ -13,6 +13,7 @@ import androidx.annotation.NonNull;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.squareup.picasso.Callback;
 import com.squareup.picasso.Picasso;
 
 import java.text.ParseException;
@@ -51,7 +52,18 @@ public class Adapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
         if (holder instanceof ItemHolder){
             Page page = list.get(position);
-            Picasso.with(context).load("http://vidoco.vn/uploads/news/" + page.getImg()).into(((ItemHolder) holder).img);
+            Picasso.with(context).load("http://vidoco.vn/uploads/news/" + page.getImg()).into(((ItemHolder) holder).img,
+            new Callback() {
+                @Override
+                public void onSuccess() {
+
+                }
+
+                @Override
+                public void onError() {
+                    ((ItemHolder) holder).img.setImageResource(R.drawable.error_img);
+                }
+            });
             ((ItemHolder) holder).img.setClipToOutline(true);
             ((ItemHolder) holder).title.setText(page.getTitle());
             ((ItemHolder) holder).date.setText(page.getDate());

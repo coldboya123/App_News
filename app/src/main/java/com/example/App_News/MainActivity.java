@@ -1,4 +1,4 @@
-package com.example.test_loadmore;
+package com.example.App_News;
 
 import android.app.Dialog;
 import android.os.Bundle;
@@ -98,7 +98,7 @@ public class MainActivity extends AppCompatActivity implements IgetNews {
         adapter.notifyItemInserted(list.size() - 1);
 
         new Handler().postDelayed(() -> {
-            //remove null from list then call getNews to fetch more 10 news to list
+            //remove null from list to remove progressbar from recyclerview then call getNews to fetch more 10 news to list
             list.remove(list.size() - 1);
             getNews(pageNumber);
         }, 1000);
@@ -118,7 +118,7 @@ public class MainActivity extends AppCompatActivity implements IgetNews {
 
         btn_tryagain.setOnClickListener(v -> {
             if (isConnected()) {
-                dialog.hide();
+                dialog.dismiss();
                 getNews(0);
             }
         });
@@ -127,7 +127,7 @@ public class MainActivity extends AppCompatActivity implements IgetNews {
 
     //Check internet connection
     private boolean isConnected() {
-        String command = "ping -c 1 google.com";
+        String command = "ping -c 1 8.8.8.8";
         try {
             return Runtime.getRuntime().exec(command).waitFor() == 0;
         } catch (InterruptedException | IOException e) {
