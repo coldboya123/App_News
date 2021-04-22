@@ -6,6 +6,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -19,10 +20,12 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 
-public class Adapter extends RecyclerView.Adapter<Adapter.ViewHolder> {
+public class Adapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     Context context;
     List<Page> list;
+
+    private static final int ITEMVIEW = 0, LOADINGVIEW = 1;
 
     public Adapter(Context context, List<Page> list) {
         this.context = context;
@@ -31,38 +34,50 @@ public class Adapter extends RecyclerView.Adapter<Adapter.ViewHolder> {
 
     @NonNull
     @Override
-    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View v = LayoutInflater.from(context).inflate(R.layout.custom_rcv_page, parent, false);
-        return new ViewHolder(v);
+    public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        View v;
+        switch (viewType) {
+            case ITEMVIEW:
+                v = LayoutInflater.from(context).inflate(R.layout.custom_rcv_page, parent, false);
+                return new ItemHolder(v);
+            case LOADINGVIEW:
+                v = LayoutInflater.from(context).inflate(R.layout.loading_layout, parent, false);
+                return new LoadingHolder(v);
+        }
+        return null;
     }
 
     @Override
-    public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        Page page = list.get(position);
-        Picasso.with(context).load("http://vidoco.vn/uploads/news/" + page.getImg()).into(holder.img);
-        holder.img.setClipToOutline(true);
-        holder.title.setText(page.getTitle());
-        holder.date.setText(page.getDate());
-        SimpleDateFormat originalFormat = new SimpleDateFormat("yyyyMMdd");
-        Date date;
-        try {
-            date = originalFormat.parse(page.getDate());
-            SimpleDateFormat newFormat = new SimpleDateFormat("yyyy-MM-dd");
-            String formatedDate = newFormat.format(date);
-            holder.date.setText(formatedDate);
-        } catch (ParseException e) {
-            e.printStackTrace();
-            holder.block.setOnClickListener(v -> {
+    public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
+        if (holder instanceof ItemHolder){
+            Page page = list.get(position);
+            Picasso.with(context).load("http://vidoco.vn/uploads/news/" + page.getImg()).into(((ItemHolder) holder).img);
+            ((ItemHolder) holder).img.setClipToOutline(true);
+            ((ItemHolder) holder).title.setText(page.getTitle());
+            ((ItemHolder) holder).date.setText(page.getDate());
+            SimpleDateFormat originalFormat = new SimpleDateFormat("yyyyMMdd");
+            Date date;
+            try {
+                date = originalFormat.parse(page.getDate());
+                SimpleDateFormat newFormat = new SimpleDateFormat("yyyy-MM-dd");
+                String formatedDate = newFormat.format(date);
+                ((ItemHolder) holder).date.setText(formatedDate);
+            } catch (ParseException e) {
+                e.printStackTrace();
+                ((ItemHolder) holder).block.setOnClickListener(v -> {
+                    Intent intent = new Intent(context, PageContentActivity.class);
+                    intent.putExtra("page", page);
+                    context.startActivity(intent);
+                });
+            }
+            ((ItemHolder) holder).block.setOnClickListener(v -> {
                 Intent intent = new Intent(context, PageContentActivity.class);
                 intent.putExtra("page", page);
                 context.startActivity(intent);
             });
+        } else if (holder instanceof LoadingHolder){
+            ((LoadingHolder) holder).progressBar.setIndeterminate(true);
         }
-        holder.block.setOnClickListener(v -> {
-            Intent intent = new Intent(context, PageContentActivity.class);
-            intent.putExtra("page", page);
-            context.startActivity(intent);
-        });
     }
 
     @Override
@@ -70,16 +85,31 @@ public class Adapter extends RecyclerView.Adapter<Adapter.ViewHolder> {
         return list.size();
     }
 
-    public class ViewHolder extends RecyclerView.ViewHolder {
+    @Override
+    public int getItemViewType(int position) {
+        return list.get(position) != null ? ITEMVIEW : LOADINGVIEW;
+    }
+
+    public class ItemHolder extends RecyclerView.ViewHolder {
         ImageView img;
         TextView title, date;
         ConstraintLayout block;
-        public ViewHolder(@NonNull View itemView) {
+
+        public ItemHolder(@NonNull View itemView) {
             super(itemView);
             img = itemView.findViewById(R.id.img);
             title = itemView.findViewById(R.id.title);
             date = itemView.findViewById(R.id.date);
             block = itemView.findViewById(R.id.block);
+        }
+    }
+
+    public class LoadingHolder extends RecyclerView.ViewHolder {
+        ProgressBar progressBar;
+
+        public LoadingHolder(@NonNull View itemView) {
+            super(itemView);
+            progressBar = itemView.findViewById(R.id.loading);
         }
     }
 }

@@ -1,67 +1,78 @@
 package com.example.test_loadmore;
 
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-
+import android.app.Dialog;
 import android.os.Bundle;
 import android.os.Handler;
-import android.view.View;
+import android.widget.Button;
 import android.widget.ProgressBar;
-import android.widget.Toast;
 
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.widget.NestedScrollView;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity implements IgetNews{
+public class MainActivity extends AppCompatActivity implements IgetNews {
+
+    SwipeRefreshLayout swipeRefreshLayout;
+    NestedScrollView nestedScrollView;
     RecyclerView recyclerView;
-    List<Page> list;
     ProgressBar progressBar;
-    int pageNumber = 1;
+    Dialog dialog;
+    Button btn_tryagain;
     Adapter adapter;
-    private int visibleItem, scrolloutItem, totalItemCount;
-    private boolean isScrolling = false;
-    private boolean islast = true;
-    LinearLayoutManager layoutManager;
+    List<Page> list;
+    int pageNumber = 0;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         init();
 
-        getNews(pageNumber - 1);
-        layoutManager = new LinearLayoutManager(this);
+        //set adapter and layoutmanager
         adapter = new Adapter(this, list);
         recyclerView.setAdapter(adapter);
-        recyclerView.setLayoutManager(layoutManager);
+        recyclerView.setLayoutManager(new LinearLayoutManager(this, RecyclerView.VERTICAL, false));
         recyclerView.setHasFixedSize(true);
 
-        recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
-            @Override
-            public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
-                super.onScrollStateChanged(recyclerView, newState);
-                isScrolling = true;
-            }
+        if (!isConnected()) {
+            onNoInternet();
+        } else {
+            //load first 10 news
+            getNews(pageNumber);
 
-            @Override
-            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
-                super.onScrolled(recyclerView, dx, dy);
-                totalItemCount = layoutManager.getItemCount();
-                visibleItem = layoutManager.getChildCount();
-                scrolloutItem = layoutManager.findFirstVisibleItemPosition();
-                if (isScrolling && islast && totalItemCount == visibleItem + scrolloutItem){
-                    isScrolling = false;
-                    islast = false;
-//                    progressBar.setVisibility(View.VISIBLE);
-                    loadMore();
+            swipeRefreshLayout.setOnRefreshListener(() -> {
+                if (isConnected()) {
+                    onRefresh();
+                } else {
+                    onNoInternet();
                 }
-            }
-        });
+                swipeRefreshLayout.setRefreshing(false);
+            });
 
+            //set listener when scroll to last view
+            nestedScrollView.setOnScrollChangeListener((NestedScrollView.OnScrollChangeListener) (v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
+                if (v.getChildAt(v.getChildCount() - 1) != null) {
+                    if ((scrollY >= v.getChildAt(v.getChildCount() - 1).getMeasuredHeight() - v.getMeasuredHeight()) && scrollY > oldScrollY) {
+                        if (!isConnected()){
+                            onNoInternet();
+                        } else {
+                            loadMore();
+                        }
+                    }
+                }
+            });
+        }
     }
 
     private void init() {
+        swipeRefreshLayout = findViewById(R.id.swiperefresh);
+        nestedScrollView = findViewById(R.id.nestedscrollview);
         recyclerView = findViewById(R.id.rcv);
         list = new ArrayList<>();
         progressBar = findViewById(R.id.loading);
@@ -78,15 +89,50 @@ public class MainActivity extends AppCompatActivity implements IgetNews{
         adapter.notifyDataSetChanged();
     }
 
-    private void loadMore(){
+    private void loadMore() {
+        //pageNumber++ to load next 10 news from server
         pageNumber++;
-        new Handler().postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                getNews(pageNumber-1);
-                islast = true;
-//                progressBar.setVisibility(View.GONE);
+
+        //add a null to list, adapter will create progressbar
+        list.add(null);
+        adapter.notifyItemInserted(list.size() - 1);
+
+        new Handler().postDelayed(() -> {
+            //remove null from list then call getNews to fetch more 10 news to list
+            list.remove(list.size() - 1);
+            getNews(pageNumber);
+        }, 1000);
+    }
+
+    private void onRefresh() {
+        list.clear();
+        pageNumber = 0;
+        getNews(pageNumber);
+    }
+
+    private void onNoInternet() {
+        dialog = new Dialog(this);
+        dialog.setContentView(R.layout.dialog_nointernet_layout);
+        btn_tryagain = dialog.findViewById(R.id.btn_tryagain);
+        dialog.setCancelable(false);
+
+        btn_tryagain.setOnClickListener(v -> {
+            if (isConnected()) {
+                dialog.hide();
+                getNews(0);
             }
-        }, 5000);
+        });
+        dialog.show();
+    }
+
+    //Check internet connection
+    private boolean isConnected() {
+        String command = "ping -c 1 google.com";
+        try {
+            return Runtime.getRuntime().exec(command).waitFor() == 0;
+        } catch (InterruptedException | IOException e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 }
